@@ -55,9 +55,9 @@ impl<const N: usize, const I: usize> Model<N, I> {
         println!("r is {}", self.r);
     }
 
-    pub fn set_initial_condition(&mut self) {
-        for x in &mut self.u[0] {
-            *x = 7.7;
+    pub fn set_initial_condition(&mut self, f: fn(f64) -> f64) {
+        for i in 0..self.u[0].len() {
+            self.u[0][i] = f(self.x_val(i));
         }
     }
 
@@ -84,35 +84,46 @@ impl<const N: usize, const I: usize> Model<N, I> {
 
     pub fn run_ctcs(&mut self) {
 
+        let u = &mut self.u;
+        let s = &self.s;
+        let r = self.r;
+        let dt = self.dt;
+
         //FTCS for the first step
         for i in 1..I-1 {
-            self.u[1][i] = self.u[0][i]
-                + (self.r / 2.0) * (self.u[0][i - 1] - self.u[0][i + 1])
-                + self.dt * self.s[0][i];
+            u[1][i] = u[0][i]
+                + (r / 2.0) * (u[0][i - 1] - u[0][i + 1])
+                + dt * s[0][i];
         }
 
         //CTCS for subsequent steps
         for n in 1..N-1 {
             for i in 1..I-1 {
-                self.u[n + 1][i] = self.u[n - 1][i]
-                    + self.r * (self.u[n][i - 1] - self.u[n][i + 1])
-                    + 2.0 * self.dt * self.s[n][i];
+                u[n + 1][i] = u[n - 1][i]
+                    + r * (u[n][i - 1] - u[n][i + 1])
+                    + 2.0 * dt * s[n][i];
             }
         }
 
     }
 
     pub fn run_ftbs(&mut self) {
+
+        let u = &mut self.u;
+        let s = &self.s;
+        let r = self.r;
+        let dt = self.dt;
+
         for n in 0..N-1 {
             for i in 1..I {
-                self.u[n + 1][i] = (1.0 - self.r) * self.u[n][i]
-                    + self.r * self.u[n][i - 1]
-                    + self.dt * self.s[n][i]
+                u[n + 1][i] = (1.0 - r) * u[n][i]
+                    + r * u[n][i - 1]
+                    + dt * s[n][i]
             }
         }
     }
 
-    pub fn write_data(&self, filename: &str, t: f64) {
+    pub fn write_data(&self, filename: String, t: f64) {
 
         let mut datafile = File::create(filename)
             .expect("Couldn't open file");
@@ -128,7 +139,7 @@ impl<const N: usize, const I: usize> Model<N, I> {
 
     }
 
-    pub fn write_data_contour(&self, filename: &str) {
+    pub fn write_data_contour(&self, filename: String) {
 
         let mut datafile = File::create(filename)
             .expect("Couldn't open file");
